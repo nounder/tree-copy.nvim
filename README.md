@@ -14,14 +14,21 @@ A Neovim plugin for copying related code using tree-sitter.
 Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
-{
-  "your-username/tree-copy.nvim",
-  keys = {
-    { "<leader>y", function() require("tree-copy").copy_related_code_visual() end, mode = "v", desc = "Copy related code" },
-  },
+return {
+	"nounder/tree-copy.nvim",
+	keys = {
+		{
+			"Y",
+			function()
+				require("tree-copy").copy_related_code()
+			end,
+			mode = "v",
+			desc = "Copy related code",
+		},
+	},
 }
 ```
 
 ## Usage
 
-After installation, use `<leader>y` in visual mode to copy related code. The plugin will analyze your selection and copy all related declarations and dependencies.
+After installation, use `Y` in visual mode to copy related code. The plugin will analyze your selection and copy all related declarations and dependencies.
