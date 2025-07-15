@@ -68,9 +68,9 @@ function M.copy_related_code(start_pos, end_pos)
 		end
 	end
 
-	print("Related Nodes:", vim.inspect(related_nodes))
+	--print("Related Nodes:", vim.inspect(related_nodes))
 	for _, node in ipairs(related_nodes) do
-		print("Node Type:", node:type(), "Node Text:", vim.treesitter.get_node_text(node, 0))
+		-- print("Node Type:", node:type(), "Node Text:", vim.treesitter.get_node_text(node, 0))
 	end
 	local related_text = M.get_text_from_nodes(bufnr, related_nodes)
 
@@ -79,7 +79,7 @@ function M.copy_related_code(start_pos, end_pos)
 	vim.fn.setreg('"', concatenated, "l")
 	vim.fn.setreg("0", concatenated, "l") -- Also set yank register
 	vim.fn.setreg("+", concatenated, "l") -- Also set system clipboard
-	vim.notify("Copied " .. #related_nodes .. " related code blocks to register", vim.log.levels.INFO)
+	-- vim.notify("Copied " .. #related_nodes .. " related code blocks to register", vim.log.levels.INFO)
 end
 
 -- Helper function to find the containing function or export statement
@@ -112,7 +112,7 @@ end
 function M.get_visual_selection()
 	local mode = vim.fn.mode()
 	local start_pos, end_pos
-	
+
 	if mode == "v" or mode == "V" or mode == "\22" then -- \22 is visual block mode
 		-- Active visual mode: get current selection bounds
 		start_pos = vim.fn.getpos("v") -- Start of current visual selection
@@ -171,7 +171,7 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 	end
 
 	local result = find_smallest_containing_node(root)
-	
+
 	-- Reject root/program nodes to prevent copying entire file when selecting empty lines
 	if result and (result == root or result:type() == "program") then
 		result = nil
@@ -204,15 +204,15 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 				local node_type = node:type()
 				local meaningful_types = {
 					"function_declaration",
-					"export_statement", 
+					"export_statement",
 					"class_declaration",
 					"interface_declaration",
 					"lexical_declaration",
 					"variable_declaration",
 					"type_alias_declaration",
-					"enum_declaration"
+					"enum_declaration",
 				}
-				
+
 				local is_meaningful = false
 				for _, meaningful_type in ipairs(meaningful_types) do
 					if node_type == meaningful_type then
@@ -220,7 +220,7 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 						break
 					end
 				end
-				
+
 				if is_meaningful and node ~= root and node_type ~= "program" then
 					return node
 				end
@@ -231,21 +231,23 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 
 		result = find_overlapping_node(root)
 	end
-	
+
 	-- Last resort: find the nearest meaningful declaration when selecting empty space
 	if not result then
 		local function find_nearest_declaration(node, target_row)
 			local best_node = nil
 			local best_distance = math.huge
-			
+
 			local function check_node(n)
 				local node_type = n:type()
-				if node_type == "function_declaration" or 
-				   node_type == "export_statement" or
-				   node_type == "class_declaration" or
-				   node_type == "interface_declaration" or
-				   node_type == "lexical_declaration" or
-				   node_type == "variable_declaration" then
+				if
+					node_type == "function_declaration"
+					or node_type == "export_statement"
+					or node_type == "class_declaration"
+					or node_type == "interface_declaration"
+					or node_type == "lexical_declaration"
+					or node_type == "variable_declaration"
+				then
 					local start_row, _, end_row, _ = n:range()
 					local distance = math.min(math.abs(start_row - target_row), math.abs(end_row - target_row))
 					if distance < best_distance then
@@ -253,16 +255,16 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 						best_node = n
 					end
 				end
-				
+
 				for child in n:iter_children() do
 					check_node(child)
 				end
 			end
-			
+
 			check_node(node)
 			return best_node
 		end
-		
+
 		-- Only use nearby declarations (within 3 lines) to avoid unrelated matches
 		local nearest = find_nearest_declaration(root, start_row)
 		if nearest then
