@@ -2,26 +2,7 @@ local M = {}
 
 local parsers = require("tree-copy.parsers")
 
-function M.setup()
-	vim.keymap.set("v", "<leader>y", function()
-		-- Capture the visual selection bounds before exiting visual mode
-		local start_pos = vim.fn.getpos("v")  -- Start of visual selection
-		local end_pos = vim.fn.getpos(".")    -- Current cursor position (end of selection)
-		
-		-- Exit visual mode first
-		vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<Esc>', true, true, true), 'n', true)
-		
-		-- Call the function with the captured bounds
-		M.copy_related_code(start_pos, end_pos)
-	end, { desc = "Copy related code using tree-sitter" })
-end
-
--- Wrapper function for keybinding compatibility (same name as before)
-function M.copy_related_code_visual()
-	-- This function can be used for keybindings without parameters
-	-- It uses the old method of getting visual selection bounds
-	M.copy_related_code()
-end
+function M.setup() end
 
 function M.copy_related_code(start_pos, end_pos)
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -43,7 +24,7 @@ function M.copy_related_code(start_pos, end_pos)
 		-- Use the provided visual selection bounds
 		start_row, start_col = start_pos[2] - 1, start_pos[3] - 1
 		end_row, end_col = end_pos[2] - 1, end_pos[3] - 1
-		
+
 		-- Ensure start comes before end
 		if start_row > end_row or (start_row == end_row and start_col > end_col) then
 			start_row, end_row = end_row, start_row
@@ -53,7 +34,7 @@ function M.copy_related_code(start_pos, end_pos)
 		-- Fallback to the old method for backward compatibility
 		start_row, start_col, end_row, end_col = M.get_visual_selection()
 	end
-	
+
 	print("Visual Selection:", start_row, start_col, end_row, end_col)
 	local selected_node = M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 	print("Selected Node:", selected_node and selected_node:type() or "nil")
@@ -71,7 +52,7 @@ function M.copy_related_code(start_pos, end_pos)
 	end
 
 	local related_nodes = parsers.find_related_nodes(filetype, parser, identifiers)
-	
+
 	-- Also include the containing function if we're selecting within a function
 	local containing_function = M.find_containing_function(selected_node)
 	if containing_function then
@@ -88,7 +69,7 @@ function M.copy_related_code(start_pos, end_pos)
 			table.insert(related_nodes, 1, containing_function)
 		end
 	end
-	
+
 	print("Related Nodes:", vim.inspect(related_nodes))
 	for _, node in ipairs(related_nodes) do
 		print("Node Type:", node:type(), "Node Text:", vim.treesitter.get_node_text(node, 0))
@@ -105,16 +86,18 @@ end
 function M.find_containing_function(node)
 	local current = node
 	local found_function = nil
-	
+
 	while current do
 		local node_type = current:type()
 		if node_type == "export_statement" then
 			-- Prefer export statements over plain function declarations
 			return current
-		elseif node_type == "function_declaration" 
-		   or node_type == "generator_function_declaration" 
-		   or node_type == "lexical_declaration" 
-		   or node_type == "variable_declaration" then
+		elseif
+			node_type == "function_declaration"
+			or node_type == "generator_function_declaration"
+			or node_type == "lexical_declaration"
+			or node_type == "variable_declaration"
+		then
 			-- Store the first function we find, but keep looking for export statements
 			if not found_function then
 				found_function = current
@@ -122,16 +105,16 @@ function M.find_containing_function(node)
 		end
 		current = current:parent()
 	end
-	
+
 	return found_function
 end
 
 function M.get_visual_selection()
 	-- Get the current visual selection bounds
 	-- This works correctly when called from visual mode
-	local start_pos = vim.fn.getpos("v")  -- Start of current visual selection
-	local end_pos = vim.fn.getpos(".")    -- Current cursor position (end of selection)
-	
+	local start_pos = vim.fn.getpos("v") -- Start of current visual selection
+	local end_pos = vim.fn.getpos(".") -- Current cursor position (end of selection)
+
 	-- If not in visual mode, fall back to the last visual selection markers
 	if start_pos[2] == 0 or end_pos[2] == 0 then
 		start_pos = vim.fn.getpos("'<")
@@ -148,7 +131,7 @@ function M.get_visual_selection()
 	-- Ensure start comes before end
 	local start_row, start_col = start_pos[2] - 1, start_pos[3] - 1
 	local end_row, end_col = end_pos[2] - 1, end_pos[3] - 1
-	
+
 	if start_row > end_row or (start_row == end_row and start_col > end_col) then
 		start_row, end_row = end_row, start_row
 		start_col, end_col = end_col, start_col

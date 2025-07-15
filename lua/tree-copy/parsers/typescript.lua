@@ -34,9 +34,52 @@ end
 local function is_related_node(node, identifiers)
 	local node_type = node:type()
 
-	-- Always include import statements as they might be dependencies
+	-- Check import statements to see if they import any of our identifiers
 	if node_type == "import_statement" then
-		return false -- Let's skip imports for now to match test expectations
+		-- Check for namespace imports like "import * as fs from 'node:fs'"
+		for child in node:iter_children() do
+			if child:type() == "import_clause" then
+				for grandchild in child:iter_children() do
+					if grandchild:type() == "namespace_import" then
+						for ggchild in grandchild:iter_children() do
+							if ggchild:type() == "identifier" then
+								local import_name = vim.treesitter.get_node_text(ggchild, 0)
+								for _, identifier in ipairs(identifiers) do
+									if import_name == identifier then
+										return true
+									end
+								end
+							end
+						end
+					elseif grandchild:type() == "named_imports" then
+						-- Check for named imports like "import { readFile } from 'fs'"
+						for ggchild in grandchild:iter_children() do
+							if ggchild:type() == "import_specifier" then
+								for gggchild in ggchild:iter_children() do
+									if gggchild:type() == "identifier" then
+										local import_name = vim.treesitter.get_node_text(gggchild, 0)
+										for _, identifier in ipairs(identifiers) do
+											if import_name == identifier then
+												return true
+											end
+										end
+									end
+								end
+							end
+						end
+					elseif grandchild:type() == "identifier" then
+						-- Check for default imports like "import fs from 'fs'"
+						local import_name = vim.treesitter.get_node_text(grandchild, 0)
+						for _, identifier in ipairs(identifiers) do
+							if import_name == identifier then
+								return true
+							end
+						end
+					end
+				end
+			end
+		end
+		return false
 	end
 
 	-- For export statements, check what they're exporting
@@ -214,8 +257,54 @@ function M.find_related_nodes(parser, identifiers)
 	local tree = parser:parse()[1]
 	local root = tree:root()
 	local related_nodes = {}
+	local processed_identifiers = {}
+	
+	-- Keep track of identifiers we've already processed to avoid infinite loops
+	local function mark_processed(identifier_list)
+		for _, id in ipairs(identifier_list) do
+			processed_identifiers[id] = true
+		end
+	end
+	
+	-- Get identifiers that haven't been processed yet
+	local function get_unprocessed_identifiers(identifier_list)
+		local unprocessed = {}
+		for _, id in ipairs(identifier_list) do
+			if not processed_identifiers[id] then
+				table.insert(unprocessed, id)
+			end
+		end
+		return unprocessed
+	end
 
-	collect_related_nodes_recursive(root, identifiers, related_nodes)
+	-- Recursively find related nodes and their dependencies
+	local function find_dependencies(current_identifiers)
+		local unprocessed = get_unprocessed_identifiers(current_identifiers)
+		if #unprocessed == 0 then
+			return
+		end
+		
+		mark_processed(unprocessed)
+		
+		-- Find nodes that declare these identifiers
+		local current_nodes = {}
+		collect_related_nodes_recursive(root, unprocessed, current_nodes)
+		
+		-- Add found nodes to our result
+		for _, node in ipairs(current_nodes) do
+			table.insert(related_nodes, node)
+		end
+		
+		-- For each found node, extract identifiers it uses and find their dependencies
+		for _, node in ipairs(current_nodes) do
+			local used_identifiers = M.extract_identifiers(node)
+			if #used_identifiers > 0 then
+				find_dependencies(used_identifiers)
+			end
+		end
+	end
+
+	find_dependencies(identifiers)
 
 	return related_nodes
 end

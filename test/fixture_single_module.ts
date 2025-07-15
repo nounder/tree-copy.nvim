@@ -1,6 +1,14 @@
-import { Component, ReactNode } from 'react';
-import { throttle, debounce } from 'lodash';
-import * as utils from './utils';
+import * as fs from "node:fs"
+import type { Stats } from "node:fs"
+
+
+export function readConfig() {
+  return fs.readFileSync("config.json")
+}
+
+export function getSize(): Stats {
+  return fs.statSync("config.json")
+}
 
 export interface GridConfig {
   rows: number;
@@ -41,8 +49,10 @@ export function main() {
   greet()
 }
 
+const message = "Welcome";
+
 function greet() {
-  console.log("Hello world!")
+  console.log(message)
 }
 
 export function calculateGridDimensions(
