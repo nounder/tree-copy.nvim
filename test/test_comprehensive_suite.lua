@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function print_test_result(test_name, passed, message)
 	local status = passed and "PASS" or "FAIL"
 	print(string.format("[%s] %s: %s", status, test_name, message or ""))
@@ -7,11 +5,15 @@ end
 
 local function run_individual_test(test_name, test_file)
 	print("Running: " .. test_name)
-	local cmd = "cd " .. vim.fn.getcwd() .. " && LUA_PATH='./lua/?.lua;./lua/?/init.lua' nvim -l " .. test_file .. " 2>&1"
+	local cmd = "cd "
+		.. vim.fn.getcwd()
+		.. " && LUA_PATH='./lua/?.lua;./lua/?/init.lua' nvim -l "
+		.. test_file
+		.. " 2>&1"
 	local handle = io.popen(cmd)
 	local result = handle:read("*a")
 	local success = handle:close()
-	
+
 	if success then
 		print("✓ PASSED: " .. test_name)
 		return true

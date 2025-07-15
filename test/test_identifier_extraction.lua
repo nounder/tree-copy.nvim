@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_identifier_extraction()
 	print("=== Testing Identifier Extraction ===")
 

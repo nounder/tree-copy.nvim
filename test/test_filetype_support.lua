@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_filetype_support()
 	print("=== Testing Filetype Support ===")
 

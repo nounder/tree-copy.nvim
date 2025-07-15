@@ -1,4 +1,3 @@
-#!/usr/bin/env nvim -l
 -- LUA_PATH should be set to include ./lua/?.lua;./lua/?/init.lua for module discovery
 
 local function test_plugin_loading()

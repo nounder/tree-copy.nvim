@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_treesitter_parsing()
 	print("=== Testing Tree-sitter Parsing ===")
 

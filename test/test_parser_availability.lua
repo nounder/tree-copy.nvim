@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_parser_availability()
 	print("=== Testing Parser Availability ===")
 

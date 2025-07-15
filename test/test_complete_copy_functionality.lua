@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_complete_copy_functionality()
 	print("=== Testing Complete Copy Functionality ===")
 

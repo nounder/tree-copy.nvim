@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_node_selection()
 	print("=== Testing Tree-sitter Node Selection ===")
 

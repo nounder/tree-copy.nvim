@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_error_handling()
 	print("=== Testing Error Handling ===")
 

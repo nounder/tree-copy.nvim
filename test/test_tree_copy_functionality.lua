@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function print_test_result(test_name, passed, message)
 	local status = passed and "PASS" or "FAIL"
 	print(string.format("[%s] %s: %s", status, test_name, message or ""))
@@ -20,12 +18,12 @@ local function test_copy_grid_function_and_references()
 		local fixture_path = vim.fn.fnamemodify("./test/fixtures/module.ts", ":p")
 
 		-- Open the fixture file
-		vim.cmd('edit ' .. vim.fn.fnameescape(fixture_path))
-		vim.bo.filetype = 'typescript'
+		vim.cmd("edit " .. vim.fn.fnameescape(fixture_path))
+		vim.bo.filetype = "typescript"
 
 		-- Wait for treesitter to parse
 		vim.wait(1000, function()
-			local parser = vim.treesitter.get_parser(0, 'typescript')
+			local parser = vim.treesitter.get_parser(0, "typescript")
 			if parser then
 				parser:parse()
 				return true
@@ -34,31 +32,31 @@ local function test_copy_grid_function_and_references()
 		end)
 
 		-- Navigate to the createGrid function (around line 35)
-		vim.fn.search('export function createGrid(')
-		local line = vim.fn.line('.')
+		vim.fn.search("export function createGrid(")
+		local line = vim.fn.line(".")
 		vim.fn.cursor(line, 1)
 
 		-- Get the current cursor position
-		local cursor_line = vim.fn.line('.')
+		local cursor_line = vim.fn.line(".")
 
 		-- Select the entire grid function using visual mode
-		vim.cmd('normal! V')
-		
+		vim.cmd("normal! V")
+
 		-- Find the end of the function by looking for the closing brace
-		local start_line = vim.fn.line('.')
+		local start_line = vim.fn.line(".")
 		local current_line = start_line
 		local brace_count = 0
 		local found_opening = false
-		
-		while current_line <= vim.fn.line('$') do
+
+		while current_line <= vim.fn.line("$") do
 			local line_text = vim.fn.getline(current_line)
-			
+
 			for i = 1, #line_text do
 				local char = line_text:sub(i, i)
-				if char == '{' then
+				if char == "{" then
 					found_opening = true
 					brace_count = brace_count + 1
-				elseif char == '}' and found_opening then
+				elseif char == "}" and found_opening then
 					brace_count = brace_count - 1
 					if brace_count == 0 then
 						vim.fn.cursor(current_line, #line_text)
@@ -73,14 +71,14 @@ local function test_copy_grid_function_and_references()
 		end
 
 		-- Execute the tree-copy functionality
-		require('tree-copy').copy_related_code()
+		require("tree-copy").copy_related_code()
 
 		-- Get the contents of the default register
 		local copied_content = vim.fn.getreg('"')
 
 		-- Create a new buffer and paste the content
-		vim.cmd('enew')
-		vim.bo.filetype = 'typescript'
+		vim.cmd("enew")
+		vim.bo.filetype = "typescript"
 		vim.cmd('put "')
 
 		-- Get the pasted content
@@ -155,20 +153,20 @@ local function test_handle_no_identifiers()
 
 	local success, err = pcall(function()
 		-- Create a buffer with content that has no clear identifiers
-		vim.cmd('enew')
-		vim.bo.filetype = 'typescript'
+		vim.cmd("enew")
+		vim.bo.filetype = "typescript"
 		vim.api.nvim_buf_set_lines(0, 0, -1, false, {
-			'// Just a comment',
-			'/* Another comment */',
-			''
+			"// Just a comment",
+			"/* Another comment */",
+			"",
 		})
 
 		-- Select the comment
-		vim.cmd('normal! ggV')
+		vim.cmd("normal! ggV")
 
 		-- Try to copy
 		local copy_success = pcall(function()
-			require('tree-copy').copy_related_code()
+			require("tree-copy").copy_related_code()
 		end)
 
 		-- Should not crash

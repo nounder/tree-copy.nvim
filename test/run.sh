@@ -63,13 +63,18 @@ run_test() {
             ((failed++))
         fi
     else
-        # Lua test with nvim -l
-        # Set LUA_PATH to include plugin module paths
-        LUA_PATH="$PROJECT_ROOT/lua/?.lua;$PROJECT_ROOT/lua/?/init.lua;"
-package_path="$PROJECT_ROOT/lua/?.lua;$PROJECT_ROOT/lua/?/init.lua;"
-export LUA_PATH
-export NVIM_LUA_PATH="$LUA_PATH"
-        if nvim --headless -c "lua print('LUA_PATH:', package.path)" -c "qall" && nvim --headless -c "lua package.path='$LUA_PATH'..package.path; print('LUA_PATH:', package.path)" -l "$test_file"; then
+        # Lua test with nvim
+        # We need to set up the Lua path inside nvim since -l doesn't respect LUA_PATH properly
+        export PROJECT_ROOT="$PROJECT_ROOT"
+        
+        # Run the test by setting up package.path and then loading the test file
+        # We need to capture the exit status from the test itself
+        nvim --headless \
+            -c "lua package.path = os.getenv('PROJECT_ROOT') .. '/lua/?.lua;' .. os.getenv('PROJECT_ROOT') .. '/lua/?/init.lua;' .. package.path" \
+            -c "luafile $test_file" \
+            -c "qall"
+        
+        if [ $? -eq 0 ]; then
             echo "✓ PASSED: $test_name"
             test_results+=("✓ $test_name")
             ((passed++))

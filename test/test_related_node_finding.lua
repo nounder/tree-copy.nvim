@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_related_node_finding()
 	print("=== Testing Related Node Finding ===")
 

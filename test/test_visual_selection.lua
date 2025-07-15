@@ -1,5 +1,3 @@
-#!/usr/bin/env nvim -l
-
 local function test_visual_selection()
 	print("=== Testing Visual Selection Detection ===")
 
