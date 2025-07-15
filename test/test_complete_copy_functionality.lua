@@ -17,14 +17,15 @@ const message = "Welcome";]]
 	vim.bo[bufnr].filetype = "javascript"
 
 	vim.api.nvim_win_set_cursor(0, { 1, 0 })
-	vim.api.nvim_buf_set_mark(bufnr, "<", 1, 0, {})
-	vim.api.nvim_buf_set_mark(bufnr, ">", 3, 1, {})
 
 	local tree_copy = require("tree-copy")
 
 	vim.fn.setreg('"', "")
 
-	tree_copy.copy_related_code()
+	-- Pass the selection directly instead of relying on visual marks
+	local start_pos = { 0, 1, 1, 0 }  -- line 1, col 1 (1-based for getpos format)
+	local end_pos = { 0, 3, 2, 0 }    -- line 3, col 2 (1-based for getpos format)
+	tree_copy.copy_related_code(start_pos, end_pos)
 
 	local copied = vim.fn.getreg('"')
 	if #copied == 0 then

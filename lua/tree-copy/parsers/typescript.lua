@@ -86,7 +86,7 @@ local function is_related_node(node, identifiers)
 	if node_type == "export_statement" then
 		for child in node:iter_children() do
 			local child_type = child:type()
-			
+
 			-- Check if this is a declaration export that defines one of our identifiers
 			if child_type == "interface_declaration" then
 				local interface_name = nil
@@ -96,7 +96,7 @@ local function is_related_node(node, identifiers)
 						break
 					end
 				end
-				
+
 				for _, identifier in ipairs(identifiers) do
 					if interface_name == identifier then
 						return true
@@ -110,7 +110,7 @@ local function is_related_node(node, identifiers)
 						break
 					end
 				end
-				
+
 				for _, identifier in ipairs(identifiers) do
 					if class_name == identifier then
 						return true
@@ -124,7 +124,7 @@ local function is_related_node(node, identifiers)
 						break
 					end
 				end
-				
+
 				for _, identifier in ipairs(identifiers) do
 					if function_name == identifier then
 						return true
@@ -144,7 +144,7 @@ local function is_related_node(node, identifiers)
 				if name_node and name_node:type() == "identifier" then
 					var_name = vim.treesitter.get_node_text(name_node, 0)
 				end
-				
+
 				for _, identifier in ipairs(identifiers) do
 					if var_name == identifier then
 						return true
@@ -258,14 +258,14 @@ function M.find_related_nodes(parser, identifiers)
 	local root = tree:root()
 	local related_nodes = {}
 	local processed_identifiers = {}
-	
+
 	-- Keep track of identifiers we've already processed to avoid infinite loops
 	local function mark_processed(identifier_list)
 		for _, id in ipairs(identifier_list) do
 			processed_identifiers[id] = true
 		end
 	end
-	
+
 	-- Get identifiers that haven't been processed yet
 	local function get_unprocessed_identifiers(identifier_list)
 		local unprocessed = {}
@@ -283,18 +283,18 @@ function M.find_related_nodes(parser, identifiers)
 		if #unprocessed == 0 then
 			return
 		end
-		
+
 		mark_processed(unprocessed)
-		
+
 		-- Find nodes that declare these identifiers
 		local current_nodes = {}
 		collect_related_nodes_recursive(root, unprocessed, current_nodes)
-		
+
 		-- Add found nodes to our result
 		for _, node in ipairs(current_nodes) do
 			table.insert(related_nodes, node)
 		end
-		
+
 		-- For each found node, extract identifiers it uses and find their dependencies
 		for _, node in ipairs(current_nodes) do
 			local used_identifiers = M.extract_identifiers(node)

@@ -22,15 +22,8 @@ local function test_copy_default_grid_config()
 		vim.cmd("edit " .. vim.fn.fnameescape(fixture_path))
 		vim.bo.filetype = "typescript"
 
-		-- Wait for treesitter to parse
-		vim.wait(1000, function()
-			local parser = vim.treesitter.get_parser(0, "typescript")
-			if parser then
-				parser:parse()
-				return true
-			end
-			return false
-		end)
+		-- Ensure tree-sitter is ready
+		require("test.test_utils").ensure_treesitter_ready(0, "typescript")
 
 		-- Navigate to DEFAULT_GRID_CONFIG (line 29)
 		local line_num = vim.fn.search("const DEFAULT_GRID_CONFIG: GridConfig = {")
@@ -164,15 +157,8 @@ local function test_copy_main_function()
 		vim.cmd("edit " .. vim.fn.fnameescape(fixture_path))
 		vim.bo.filetype = "typescript"
 
-		-- Wait for treesitter to parse
-		vim.wait(1000, function()
-			local parser = vim.treesitter.get_parser(0, "typescript")
-			if parser then
-				parser:parse()
-				return true
-			end
-			return false
-		end)
+		-- Ensure tree-sitter is ready
+		require("test.test_utils").ensure_treesitter_ready(0, "typescript")
 
 		-- Navigate to main function (line 40)
 		local line_num = vim.fn.search("export function main()")
@@ -286,15 +272,8 @@ local function test_copy_readconfig_with_imports()
 		vim.cmd("edit " .. vim.fn.fnameescape(fixture_path))
 		vim.bo.filetype = "typescript"
 
-		-- Wait for treesitter to parse
-		vim.wait(1000, function()
-			local parser = vim.treesitter.get_parser(0, "typescript")
-			if parser then
-				parser:parse()
-				return true
-			end
-			return false
-		end)
+		-- Ensure tree-sitter is ready
+		require("test.test_utils").ensure_treesitter_ready(0, "typescript")
 
 		-- Navigate to readConfig function
 		local line_num = vim.fn.search("export function readConfig()")
@@ -336,7 +315,8 @@ local function test_copy_readconfig_with_imports()
 
 		-- Expected content - should include fs import and readConfig function
 		-- Note: The leading newline is expected because vim's 'put' command adds it
-		local expected_content = "\nimport * as fs from \"node:fs\"\n\nexport function readConfig() {\n  return fs.readFileSync(\"config.json\")\n}"
+		local expected_content =
+			'\nimport * as fs from "node:fs"\n\nexport function readConfig() {\n  return fs.readFileSync("config.json")\n}'
 
 		-- Compare the raw buffer content directly with literal string
 		if pasted_content ~= expected_content then

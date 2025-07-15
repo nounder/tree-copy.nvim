@@ -4,6 +4,7 @@ local parsers = require("tree-copy.parsers")
 
 function M.setup() end
 
+-- Main function: copies the selected code and all its dependencies
 function M.copy_related_code(start_pos, end_pos)
 	local bufnr = vim.api.nvim_get_current_buf()
 	local filetype = vim.bo[bufnr].filetype
@@ -19,19 +20,17 @@ function M.copy_related_code(start_pos, end_pos)
 		return
 	end
 
+	-- Determine selection bounds: use provided positions or detect from visual mode
 	local start_row, start_col, end_row, end_col
 	if start_pos and end_pos then
-		-- Use the provided visual selection bounds
 		start_row, start_col = start_pos[2] - 1, start_pos[3] - 1
 		end_row, end_col = end_pos[2] - 1, end_pos[3] - 1
 
-		-- Ensure start comes before end
 		if start_row > end_row or (start_row == end_row and start_col > end_col) then
 			start_row, end_row = end_row, start_row
 			start_col, end_col = end_col, start_col
 		end
 	else
-		-- Fallback to the old method for backward compatibility
 		start_row, start_col, end_row, end_col = M.get_visual_selection()
 	end
 
@@ -53,10 +52,10 @@ function M.copy_related_code(start_pos, end_pos)
 
 	local related_nodes = parsers.find_related_nodes(filetype, parser, identifiers)
 
-	-- Also include the containing function if we're selecting within a function
+	-- Include the containing function/export when selecting within a function body
 	local containing_function = M.find_containing_function(selected_node)
 	if containing_function then
-		-- Check if this containing function is not already in our related nodes
+		-- Avoid duplicates by checking if already in related nodes
 		local already_added = false
 		for _, existing_node in ipairs(related_nodes) do
 			if existing_node == containing_function then
@@ -65,7 +64,6 @@ function M.copy_related_code(start_pos, end_pos)
 			end
 		end
 		if not already_added then
-			-- Insert the containing function at the beginning to maintain logical order
 			table.insert(related_nodes, 1, containing_function)
 		end
 	end
@@ -77,8 +75,10 @@ function M.copy_related_code(start_pos, end_pos)
 	local related_text = M.get_text_from_nodes(bufnr, related_nodes)
 
 	local concatenated = table.concat(related_text, "\n\n")
-	vim.fn.setreg('"', concatenated)
-	vim.fn.setreg("0", concatenated) -- Also set yank register
+	-- Set register with linewise type to match default yank behavior
+	vim.fn.setreg('"', concatenated, "l")
+	vim.fn.setreg("0", concatenated, "l") -- Also set yank register
+	vim.fn.setreg("+", concatenated, "l") -- Also set system clipboard
 	vim.notify("Copied " .. #related_nodes .. " related code blocks to register", vim.log.levels.INFO)
 end
 
@@ -110,25 +110,26 @@ function M.find_containing_function(node)
 end
 
 function M.get_visual_selection()
-	-- Get the current visual selection bounds
-	-- This works correctly when called from visual mode
-	local start_pos = vim.fn.getpos("v") -- Start of current visual selection
-	local end_pos = vim.fn.getpos(".") -- Current cursor position (end of selection)
-
-	-- If not in visual mode, fall back to the last visual selection markers
-	if start_pos[2] == 0 or end_pos[2] == 0 then
+	local mode = vim.fn.mode()
+	local start_pos, end_pos
+	
+	if mode == "v" or mode == "V" or mode == "\22" then -- \22 is visual block mode
+		-- Active visual mode: get current selection bounds
+		start_pos = vim.fn.getpos("v") -- Start of current visual selection
+		end_pos = vim.fn.getpos(".") -- Current cursor position (end of selection)
+	else
+		-- Not in visual mode: use the last visual selection markers
 		start_pos = vim.fn.getpos("'<")
 		end_pos = vim.fn.getpos("'>")
 	end
 
-	-- Handle case where visual selection markers are not set
+	-- Fallback to current line if no visual selection markers exist
 	if start_pos[2] == 0 or end_pos[2] == 0 then
-		-- Use current line if no visual selection
 		local current_line = vim.fn.line(".")
 		return current_line - 1, 0, current_line - 1, vim.fn.col("$") - 1
 	end
 
-	-- Ensure start comes before end
+	-- Convert to 0-based indexing and ensure proper ordering
 	local start_row, start_col = start_pos[2] - 1, start_pos[3] - 1
 	local end_row, end_col = end_pos[2] - 1, end_pos[3] - 1
 
@@ -144,16 +145,17 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 	local tree = parser:parse()[1]
 	local root = tree:root()
 
+	-- Find the smallest tree-sitter node that completely contains the selection
 	local function find_smallest_containing_node(node)
 		local node_start_row, node_start_col, node_end_row, node_end_col = node:range()
 
-		-- Check if node contains the selection
+		-- Check if this node completely contains the user's selection
 		local contains_start = (node_start_row < start_row)
 			or (node_start_row == start_row and node_start_col <= start_col)
 		local contains_end = (node_end_row > end_row) or (node_end_row == end_row and node_end_col >= end_col)
 
 		if contains_start and contains_end then
-			-- Try to find a smaller containing node among children
+			-- Recursively check children to find the most specific containing node
 			for child in node:iter_children() do
 				local smaller = find_smallest_containing_node(child)
 				if smaller then
@@ -161,7 +163,7 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 				end
 			end
 
-			-- If no smaller node found, return this node
+			-- No child contains the selection, so this is the smallest containing node
 			return node
 		end
 
@@ -169,13 +171,19 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 	end
 
 	local result = find_smallest_containing_node(root)
+	
+	-- Reject root/program nodes to prevent copying entire file when selecting empty lines
+	if result and (result == root or result:type() == "program") then
+		result = nil
+	end
 
-	-- If no containing node found, try to find any overlapping node
+	-- If no containing node found, look for nodes that overlap with the selection
 	if not result then
+		-- Look for nodes that have any overlap with the selection (partial matches)
 		local function find_overlapping_node(node)
 			local node_start_row, node_start_col, node_end_row, node_end_col = node:range()
 
-			-- Check if there's any overlap between node and selection
+			-- Check if node and selection have any overlap using inverse logic
 			local overlaps = not (
 				node_end_row < start_row
 				or node_start_row > end_row
@@ -184,7 +192,7 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 			)
 
 			if overlaps then
-				-- Try children first for more specific nodes
+				-- Prefer more specific child nodes over parent nodes
 				for child in node:iter_children() do
 					local child_result = find_overlapping_node(child)
 					if child_result then
@@ -192,9 +200,28 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 					end
 				end
 
-				-- Return this node if it's meaningful (not just punctuation)
+				-- Only accept meaningful declaration nodes, not keywords or punctuation
 				local node_type = node:type()
-				if not node_type:match("^[{}();,]$") and node_type ~= "ERROR" then
+				local meaningful_types = {
+					"function_declaration",
+					"export_statement", 
+					"class_declaration",
+					"interface_declaration",
+					"lexical_declaration",
+					"variable_declaration",
+					"type_alias_declaration",
+					"enum_declaration"
+				}
+				
+				local is_meaningful = false
+				for _, meaningful_type in ipairs(meaningful_types) do
+					if node_type == meaningful_type then
+						is_meaningful = true
+						break
+					end
+				end
+				
+				if is_meaningful and node ~= root and node_type ~= "program" then
 					return node
 				end
 			end
@@ -203,6 +230,48 @@ function M.get_node_at_selection(parser, start_row, start_col, end_row, end_col)
 		end
 
 		result = find_overlapping_node(root)
+	end
+	
+	-- Last resort: find the nearest meaningful declaration when selecting empty space
+	if not result then
+		local function find_nearest_declaration(node, target_row)
+			local best_node = nil
+			local best_distance = math.huge
+			
+			local function check_node(n)
+				local node_type = n:type()
+				if node_type == "function_declaration" or 
+				   node_type == "export_statement" or
+				   node_type == "class_declaration" or
+				   node_type == "interface_declaration" or
+				   node_type == "lexical_declaration" or
+				   node_type == "variable_declaration" then
+					local start_row, _, end_row, _ = n:range()
+					local distance = math.min(math.abs(start_row - target_row), math.abs(end_row - target_row))
+					if distance < best_distance then
+						best_distance = distance
+						best_node = n
+					end
+				end
+				
+				for child in n:iter_children() do
+					check_node(child)
+				end
+			end
+			
+			check_node(node)
+			return best_node
+		end
+		
+		-- Only use nearby declarations (within 3 lines) to avoid unrelated matches
+		local nearest = find_nearest_declaration(root, start_row)
+		if nearest then
+			local start_row_nearest, _, end_row_nearest, _ = nearest:range()
+			local distance = math.min(math.abs(start_row_nearest - start_row), math.abs(end_row_nearest - start_row))
+			if distance <= 3 then
+				result = nearest
+			end
+		end
 	end
 
 	return result
