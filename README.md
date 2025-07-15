@@ -1,11 +1,13 @@
-# hello.nvim
+# tree-copy.nvim
 
-A Neovim plugin starter template.
+A Neovim plugin for copying related code using tree-sitter.
 
 ## Features
 
-- Prints "Hello World" on initialization
-- Provides a keybinding (`<leader>hw`) to open a buffer with "Hello World" and current date
+- Copies related code based on tree-sitter analysis
+- Supports TypeScript and other languages
+- Intelligent identifier extraction and dependency resolution
+- Finds containing functions when selecting function calls
 
 ## Installation
 
@@ -13,13 +15,13 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-  "nounder/hello.nvim",
-  config = function()
-    require("hello").setup()
-  end,
+  "your-username/tree-copy.nvim",
+  keys = {
+    { "<leader>y", function() require("tree-copy").copy_related_code_visual() end, mode = "v", desc = "Copy related code" },
+  },
 }
 ```
 
 ## Usage
 
-After installation, the plugin will print "Hello World" when initialized. Use `<leader>hw` to open a buffer displaying "Hello World" and the current date.
+After installation, use `<leader>y` in visual mode to copy related code. The plugin will analyze your selection and copy all related declarations and dependencies.
