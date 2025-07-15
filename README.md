@@ -1,15 +1,21 @@
 # tree-copy.nvim
 
-A Neovim plugin for copying related code using tree-sitter.
+Copy code with its symbolic dependencies in one go!
+
+![](./doc/explainer.png)
+
+Ever wanted to copy a fragment of a code to a new file and ended up fighting with import statements, missing local functions and variables? This plugin copies all symbols used in a code fragment you want to make refactoring a breeze!
+
+Only works with JavaScript/TypeScript for now. More languages can be added in `parsers/` directory.
+
+Plugin is still in development so it's not perfect. I invite you to try it, report issues, and make PRs :)
 
 ## Features
 
-- Copies related code based on tree-sitter analysis
-- Supports TypeScript and other languages
+- Copies related code based on tree-sitter
 - Intelligent identifier extraction and dependency resolution
-- Finds containing functions when selecting function calls
 
-## Installation
+## Install
 
 Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
